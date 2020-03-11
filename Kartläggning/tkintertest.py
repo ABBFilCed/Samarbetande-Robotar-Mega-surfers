@@ -31,4 +31,21 @@ for row in range (0, w):
     disty += strlRuta
     distx = 0
 
+def whereHaveIBeen():
+    linesPassed = mqtt
+    if forward:
+        newcoordinates = distx, (disty + 1), distx + strlRuta, (disty + 1) + strlRuta
+    if backward:
+        newcoordinates = distx, (disty - 1), distx + strlRuta, (disty - 1) + strlRuta
+    if right:
+        newcoordinates = (dist x + 1), disty, (distx + 1) + strlRuta, disty + strlRuta
+    if left:
+        newcoordinates = (dist x + 1), disty, (distx + 1) + strlRuta, disty + strlRuta
+
+
+    if linePassed = True: 
+        C.create_rectangle(newcoordinates, fill = "SkyBlue2")
+        
+    
+
 mainloop()
