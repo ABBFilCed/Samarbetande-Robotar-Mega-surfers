@@ -1,6 +1,6 @@
 from tkinter import * # importerar tkinter som är ett grafiskt bibilotek
 import time
-
+print("helo")
 master = Tk()
 master.geometry('1000x1000')
 
@@ -17,7 +17,6 @@ C.pack()
 w = 50
 h = 50
 num = 5
-
 for row in range (0, w):
     for col in range(0, h):
         distx += strlRuta
