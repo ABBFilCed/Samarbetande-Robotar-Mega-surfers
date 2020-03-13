@@ -18,7 +18,7 @@ w = 50
 h = 50
 num = 5
 
-for row in range (0, w):
+for row in range (0, w): # skapar matrix, kollar vidare på detta för utveckling sen. 
     for col in range(0, h):
         distx += strlRuta
         koordinater = distx, disty, distx + strlRuta, disty + strlRuta # koordinater för x och y led samt bredd och höjd på dessa
@@ -29,7 +29,7 @@ for row in range (0, w):
             C.create_rectangle(koordinater, fill = "White")
         num += 1
     disty += strlRuta
-    distx = 0
+    distx = 0 
 
 def whereHaveIBeen():
     linesPassed = mqtt
