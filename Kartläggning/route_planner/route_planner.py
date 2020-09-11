@@ -1,67 +1,53 @@
-import util
-import search_algoritms
-import numpy as np
 import json
 import random
-import tkinter
+
+import pygame
+import numpy as np
+
+import util
+import search_algoritms
+from world import World
+from nodes import Nodes
+from settings import Settings
+import route_functions as rf
 
 
-def CreateWorld(width, height, costs=False):
-    world = np.zeros((height, width))
-    if costs == True:
-        for r in range(0, len(world)):
-            for c in range(0, len(world[r])):
-                world[r][c] = random.randint(0, 8)
-    print(world)
-    return world
+def run_route_planner():
+    """Runs the whole program."""
+    settings = Settings()
+    pygame.init()
+    screen = pygame.display.set_mode(
+        (settings.screen_width, settings.screen_height))
+    pygame.display.set_caption("Route Planner 1.0")
+
+    world = World(settings.map_width, settings.map_height)
+    world.matrix = [["601", "500", "310", "614", "600", "610"],
+                    ["530", "400", "310", "510", "533", "100"],
+                    ["100", "100", "102", "530", "620", "100"],
+                    ["100", "100", "100", "100", "100", "100"],
+                    ["100", "100", "100", "100", "100", "100"],
+                    ["630", "100", "100", "100", "100", "620"]]
+
+    nodes = Nodes(world.matrix)
+
+    while True:
+        rf.update_matrix(world.matrix, nodes.nodes_dict)
+        rf.update_screen(screen, settings, world.matrix, nodes)
+        rf.check_events()
 
 
-def CreateNodes(world):
-    nodes_dict = {}
+run_route_planner()
 
-    for r in range(0, len(world)):
-        for c in range(0, len(world[r])):
-            if world[r][c] != 8:
-                node = []
-                if c < len(world) - 1 and world[r][c+1] != 8:
-                    node.append([str([r, c+1]), 1 + world[r][c+1]])
-                if c > 0 and world[r][c-1] != 8:
-                    node.append([str([r, c-1]), 1 + world[r][c-1]])
-                if r < len(world[r]) - 1 and world[r+1][c] != 8:
-                    node.append([str([r+1, c]), 1 + world[r+1][c]])
-                if r > 0 and world[r-1][c] != 8:
-                    node.append([str([r-1, c]), 1 + world[r-1][c]])
-                nodes_dict[str([r, c])] = node
 
-    return nodes_dict
+"""#for node in nodes.nodes_dict:
+    #  print(node + " : ", nodes.nodes_dict[node])
+    world.set_new_val(3, 0, "003")
+    start_pos = "[1, 1]"
+    for i in range(0, len(world.matrix)):
+        for j in range(0, len(world.matrix[i])):
+            if world.matrix[i][j] == "003":
+                goal_pos = str([i, j])
+                #print (goal_pos)
+                break
 
-#nodes = CreateNodes(CreateWorld(8, 8))
-
-#nodes = CreateNodes(CreateWorld(8, 8, True))
-
-n_rows = 8
-world = CreateWorld(n_rows, n_rows)
-world[3][0] = 3 
-nodes = CreateNodes(world)
-
-for node in nodes:
-    print(node + " : ", nodes[node])
-# print(json.loads(node))
-
-start_pos = "[1, 1]"
-for i in range(0, len(world)):
-    for j in range(0, i):
-        if world[i][j] == 3:
-            goal_pos = str([i, j])
-            print (goal_pos)
-            break
-
-#search_algoritms.DFSSearch(start_pos, nodes, goal_pos)
-
-#search_algoritms.BFSSearch(start, nodes, end)
-
-#search_algoritms.UCSearch(start, nodes, end)
-
-#search_algoritms.GSearch(start_pos, nodes, goal)
-
-search_algoritms.ASearch(start_pos, nodes, goal_pos)
+    search_algoritms.ASearch(start_pos, nodes.nodes_dict, goal_pos)"""

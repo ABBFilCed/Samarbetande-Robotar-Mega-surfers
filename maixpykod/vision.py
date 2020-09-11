@@ -14,6 +14,7 @@ class Midline():
         self.theta = 0
         self.visible = False
         self.delta_theta = 0
+        self.roi = (120, 0, 80, 240)
 
     def print_line(self):
         """Print line properties."""
@@ -31,6 +32,10 @@ class Midline():
         """Draw line to screen."""
         img.draw_line(self.l.line(), color=(255, 0, 0))
 
+    def reset_roi(self):
+        """Reset midline, e.g. after turning"""
+        self.roi = (120, 0, 80, 240)
+
 
 class Robot():
     """Class to hold robot data."""
@@ -40,6 +45,7 @@ class Robot():
         self.err_angle = 0
         self.turning = False
         self.new_part = True
+        self.update_midline = True
 
     def update_err(self, err, v):
         """Update to latest error values"""
@@ -51,7 +57,6 @@ class Settings():
     """Class which holds global settings"""
 
     def __init__(self):
-        self.midline_roi = (100, 0, 170, 120)
         self.crossing_rois = [{"pos": "mid_bottom", "roi": (90, 120, 140, 120)},
                               {"pos": "left", "roi": (0, 40, 60, 160)},
                               {"pos": "mid_top", "roi": (90, 0, 140, 120)},
@@ -63,11 +68,7 @@ class Settings():
         self.v_crossing_settings = 2, 1, 1000, 10, 10
         self.h_crossing_settings = 2, 1, 1000, 5, 5
         self.midline_settings = 2, 1, 1000, 25, 25
-        self.h_line_settings = 2, 1, 1000, 25, 25
-
-    def reset_midline_roi(self):
-        """Reset midline, e.g. after turning"""
-        self.midline_roi = (100, 0, 170, 240)
+        self.h_line_settings = 10, 1, 800, 25, 25
 
 
 def initialize():
@@ -136,7 +137,7 @@ def get_error(midline, cam_width, camera_dist, robot):
 
 def update_midline(img, settings, midline, robot):
     """Updates midline and error."""
-    lines = img.find_lines(settings.midline_roi, *
+    lines = img.find_lines(midline.roi, *
                            settings.midline_settings)
     get_midline(lines, midline)
     # Only do calculations if the midline is visible.
@@ -144,7 +145,7 @@ def update_midline(img, settings, midline, robot):
         # Calculate error to regulate steering.
         get_error(midline, settings.cam_width, settings.camera_dist, robot)
         # Update roi
-        settings.midline_roi = (midline.l.x1() - 20, 0, 40, 120)
+        midline.roi = (midline.l.x1() - 20, 0, 40, 120)
 
 
 def v_line(l):
@@ -193,17 +194,20 @@ def detect_junctions(crossings, img, h_line_settings):
         #print("4-way crossing ahead!")
         junct = "4_W"
     elif len(crossings) == 1:
-        #print("Crossing ahead!")
         # A t-junction with <-- and --> has a crossing and a horizontal midline.
         if crossings[0]['pos'] == "mid_bottom":
-            for l in img.find_lines((0, 150, 320, 90), *h_line_settings):
+            for l in img.find_lines((0, 0, 320, 120), *h_line_settings):
                 if h_line(l):
                     #print("T-junction ahead!")
+                    img.draw_line(l.line(), color=(255, 0, 0), thickness=3)
                     junct = "T_LR"
         elif crossings[0]['pos'] == "left":
             junct = "T_L"
         elif crossings[0]['pos'] == "right":
             junct = "T_R"
+        else:
+            junct = "Ahead"
+
     return junct
 
 
@@ -218,16 +222,18 @@ def check_for_curve(midline):
     return crv
 
 
-def update_pos(settings, img, midline):
+def update_pos(settings, img, midline, robot):
     """Returns roadtype ahead."""
     crossings = find_crossings(
         settings.crossing_rois, settings.v_crossing_settings, settings.h_crossing_settings)
-    # if crossings:
-    # print(crossings)
+
     # Detect if junction ahead
     junction = detect_junctions(crossings, img, settings.h_line_settings)
     curve = check_for_curve(midline)
+    robot.update_midline = True
     if junction:
+        robot.update_midline = False
+        midline.reset_roi()
         return junction
     elif curve:
         return curve
@@ -241,16 +247,16 @@ def draw_roi(img, roi, filled=False):
                        thickness=3, fill=filled)
 
 
-def draw_onscreen(midline, img, settings, pos):
+def draw_onscreen(midline, img, settings, pos, robot):
     """Draws relevant information on the screen."""
-    if midline.visible:
+    if midline.visible and robot.update_midline:
         # Visualise midline and region of interest
         midline.draw_line(img)
         # Visualise error
         img.draw_line((int((midline.l.x1()+midline.l.x2())/2), 120, int((midline.l.x1() +
                                                                          midline.l.x2())/2+robot.err*20), 120), color=(255, 0, 0), thickness=5)
     # Draw out used rois
-    draw_roi(img, settings.midline_roi)
+    draw_roi(img, midline.roi)
     img.draw_string(200, 100, pos, scale=2)
     # for crossing in settings.crossing_rois:
     # Fill if a crossing is found in the roi.
@@ -272,12 +278,13 @@ while(True):
     if not robot.turning:
         img = take_snapshot()
         # Get current position and midline
-        update_midline(img, settings, midline, robot)
+        if robot.update_midline:
+            update_midline(img, settings, midline, robot)
         if robot.new_part:
-            pos = update_pos(settings, img, midline)
-            #print(pos)
-
+            pos = update_pos(settings, img, midline, robot)
         # Draw output to lcd
-        draw_onscreen(midline, img, settings, pos)
+        draw_onscreen(midline, img, settings, pos, robot)
+    else:
+        robot.update_midline = False
 print("finish")
 lcd.clear()

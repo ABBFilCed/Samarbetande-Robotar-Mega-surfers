@@ -17,12 +17,8 @@ C.pack()
 w = 50
 h = 50
 num = 5
-<<<<<<< HEAD
 
 for row in range (0, w): # skapar matrix, kollar vidare på detta för utveckling sen. 
-=======
-for row in range (0, w):
->>>>>>> 6c82e2a8e64c804bd71529a5a4813cd9a06acb8f
     for col in range(0, h):
         distx += strlRuta
         koordinater = distx, disty, distx + strlRuta, disty + strlRuta # koordinater för x och y led samt bredd och höjd på dessa
@@ -36,18 +32,18 @@ for row in range (0, w):
     distx = 0 
 
 def whereHaveIBeen():
-    linesPassed = mqtt
+    linesPassed = "mqtt"
     if forward:
         newcoordinates = distx, (disty + 1), distx + strlRuta, (disty + 1) + strlRuta
     if backward:
         newcoordinates = distx, (disty - 1), distx + strlRuta, (disty - 1) + strlRuta
     if right:
-        newcoordinates = (dist x + 1), disty, (distx + 1) + strlRuta, disty + strlRuta
+        newcoordinates = (distx + 1), disty, (distx + 1) + strlRuta, disty + strlRuta
     if left:
-        newcoordinates = (dist x + 1), disty, (distx + 1) + strlRuta, disty + strlRuta
+        newcoordinates = (distx + 1), disty, (distx + 1) + strlRuta, disty + strlRuta
 
 
-    if linePassed = True: 
+    if linePassed == True: 
         C.create_rectangle(newcoordinates, fill = "SkyBlue2")
         
     
