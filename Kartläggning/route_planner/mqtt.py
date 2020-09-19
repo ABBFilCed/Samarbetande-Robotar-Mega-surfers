@@ -16,16 +16,18 @@ host = "maqiatto.com"
 port = 8883
 topic = "jesper.jansson@abbindustrigymnasium.se/map"
 
-client = mqtt.Client(client_id="client_id", clean_session=True, userdata=None, transport="tcp")
+client = mqtt.Client(transport="websockets")
 
 client.on_connect=on_connect
 
 print("Connecting to broker", host)
 
+#client.tls_set()
+
 #client.on_connect = on_connect
 #client.on_message = on_message  
-
-client.connect(host, 1883)
+client.username_pw_set(username="jesper.jansson@abbindustrigymnasium.se", password="1234")
+client.connect(host, 8883)
 client.loop_start()
 client.publish(topic, "hello world")
 #client.subscribe(topic)

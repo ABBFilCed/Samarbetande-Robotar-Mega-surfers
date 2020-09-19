@@ -1,5 +1,6 @@
 import util
 
+
 def DFSSearch(node, graph, goal):
     frontier = util.Stack()
     exploredNodes = []
@@ -15,7 +16,7 @@ def DFSSearch(node, graph, goal):
             if goal == currentState:
                 print(startState, "to", goal, actions, "Cost:", currentCost)
                 return actions
-        
+
             else:
                 successors = graph[currentState]
                 for succState, succCost in successors:
@@ -24,8 +25,9 @@ def DFSSearch(node, graph, goal):
                     newNode = (succState, newAction, newCost)
                     print(newNode)
                     frontier.push(newNode)
-    
+
     return actions
+
 
 def BFSSearch(node, graph, goal):
     frontier = util.Queue()
@@ -42,7 +44,7 @@ def BFSSearch(node, graph, goal):
             if goal == currentState:
                 print(startState, "to", goal, actions, "Cost:", currentCost)
                 return actions
-        
+
             else:
                 successors = graph[currentState]
                 for succState, succCost in successors:
@@ -51,8 +53,9 @@ def BFSSearch(node, graph, goal):
                     newNode = (succState, newAction, newCost)
                     print(newNode)
                     frontier.push(newNode)
-    
+
     return actions
+
 
 def UCSearch(node, graph, goal):
     frontier = util.PriorityQueue()
@@ -69,7 +72,7 @@ def UCSearch(node, graph, goal):
             if goal == currentState:
                 print(startState, "to", goal, actions, "Cost:", currentCost)
                 return actions
-        
+
             else:
                 successors = graph[currentState]
                 for succState, succCost in successors:
@@ -78,14 +81,15 @@ def UCSearch(node, graph, goal):
                     newNode = (succState, newAction, newCost)
                     print(newNode)
                     frontier.push(newNode, newCost)
-    
+
     return actions
 
 
 def nullHeuristic(state):
     return 0
 
-def GSearch(node, graph, goal, heuristic = nullHeuristic):
+
+def GSearch(node, graph, goal, heuristic=nullHeuristic):
     frontier = util.PriorityQueue()
     exploredNodes = []
     startState = node
@@ -93,13 +97,13 @@ def GSearch(node, graph, goal, heuristic = nullHeuristic):
     frontier.push(startNode, 0)
     while not frontier.isEmpty():
         currentState, actions, currentCost = frontier.pop()
-        exploredNodes.append((currentState, currentCost)) 
+        exploredNodes.append((currentState, currentCost))
         print("Current state is: ", currentState)
 
         if goal == currentState:
             print(startState, "to", goal, actions, "Cost:", currentCost)
             return actions
-    
+
         else:
             successors = graph[currentState]
             for succState, succCost in successors:
@@ -113,15 +117,16 @@ def GSearch(node, graph, goal, heuristic = nullHeuristic):
                     exploredState, exploredCost = explored
                     if succState == exploredState:
                         G_explored = True
-                    
+
                 if not G_explored:
                     print(newNode)
                     frontier.push(newNode, newCost+heuristic(succState))
                     exploredNodes.append((succState, newCost))
-    
+
     return actions
 
-def ASearch(node, graph, goal, heuristic = nullHeuristic):
+
+def ASearch(node, graph, goal, heuristic=nullHeuristic):
     frontier = util.PriorityQueue()
     exploredNodes = []
     startState = node
@@ -129,13 +134,13 @@ def ASearch(node, graph, goal, heuristic = nullHeuristic):
     frontier.push(startNode, 0)
     while not frontier.isEmpty():
         currentState, actions, currentCost = frontier.pop()
-        exploredNodes.append((currentState, currentCost)) 
-        print("Current state is: ", currentState)
+        exploredNodes.append((currentState, currentCost))
+        #print("Current state is: ", currentState)
 
         if goal == currentState:
-            print(startState, "to", goal, actions, "Cost:", currentCost)
-            return actions
-    
+            #print(startState, "to", goal, actions, "Cost:", currentCost)
+            return actions, currentCost
+
         else:
             successors = graph[currentState]
             for succState, succCost in successors:
@@ -149,10 +154,10 @@ def ASearch(node, graph, goal, heuristic = nullHeuristic):
                     exploredState, exploredCost = explored
                     if succState == exploredState and newCost >= exploredCost:
                         A_explored = True
-                    
+
                 if not A_explored:
-                    print(newNode)
+                    # print(newNode)
                     frontier.push(newNode, newCost+heuristic(succState))
                     exploredNodes.append((succState, newCost))
-    
-    return actions
+
+    return actions, currentCost
