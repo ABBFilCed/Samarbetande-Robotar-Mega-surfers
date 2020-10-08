@@ -41,4 +41,4 @@ client.subscribe("jesper.jansson@abbindustrigymnasium.se/map")
 
 time.sleep(10)
 client.loop_stop()
-client.disconnect
+client.disconnect()
