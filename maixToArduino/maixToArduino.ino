@@ -2,13 +2,16 @@
 #define IN2 5
 
 void setup() {
-  pinMode(IN1, OUTPUT);
-  pinMode(IN2, OUTPUT);
+
   Serial.begin(9600);
 }
 
 void loop() {
-  digitalWrite(IN1, HIGH);
-  analogWrite(IN2, 800);
+  while (Serial.available()) {​​​​
+    delay(1);
+    char c = Serial.read();
+    payload += c;
+    Serial.println(String(payload))
+  }​​​​
 }
 
