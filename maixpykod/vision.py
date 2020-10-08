@@ -3,7 +3,13 @@ import image
 import lcd
 import time
 import math
+from fpioa_manager import fm
+from board import board_info
+import time
+from machine import UART
 
+fm.register (board_info.PIN15, fm.fpioa.UART1_TX)
+uart_A = UART(UART.UART1, 115200, 8, 0, 0, timeout=1000, read_buf_len=4096)
 
 class Midline():
     """Class to hold the latest midline props."""
@@ -274,6 +280,9 @@ settings = Settings()
 
 
 while(True):
+    print("Fel: " + str(robot.err))
+    uart_A.write("Fel: " + str(robot.err))
+    time.sleep(10)
     # Robot is blind while turning
     if not robot.turning:
         img = take_snapshot()
