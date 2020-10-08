@@ -31,4 +31,4 @@ client.publish("jesper.jansson@abbindustrigymnasium.se/map", "jocke")
 time.sleep(5)
 
 client.loop_stop()
-client.disconnect
+client.disconnect()

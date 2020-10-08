@@ -42,15 +42,13 @@ class Robot():
 
     def __init__(self):
         self.err = 0
-        self.err_angle = 0
         self.turning = False
         self.new_part = True
         self.update_midline = True
 
-    def update_err(self, err, v):
+    def update_err(self, err):
         """Update to latest error values"""
         self.err = err
-        self.err_angle = v
 
 
 class Settings():
@@ -116,8 +114,8 @@ def get_midline(lines, midline):
             break
 
 
-def get_error(midline, cam_width, camera_dist, robot):
-    """Calculates error based on distance and angle from midline."""
+def get_error(midline, cam_width, robot):
+    """Calculates error based on distance and angle from midline.""""""
     if midline.theta < 90:
         v = midline.theta
     else:
@@ -132,7 +130,9 @@ def get_error(midline, cam_width, camera_dist, robot):
         Error = ((180-midline.l.x1()*math.cos(v*(pi/180)) +
                   camera_dist*math.sin(v*(pi/180)))*cam_width/320)
     #print("Error = ", Error, " cm")
-    robot.update_err(Error, v)
+    robot.update_err(Error, v)"""
+    Error = (midline.l.x1()-160)*(cam_width/320)
+    robot.update_err(Error)
 
 
 def update_midline(img, settings, midline, robot):
