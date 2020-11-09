@@ -5,11 +5,9 @@ import time
 import math
 from fpioa_manager import fm
 from board import board_info
-import time
+from time import time
 from machine import UART
 
-fm.register (board_info.PIN15, fm.fpioa.UART1_TX)
-uart_A = UART(UART.UART1, 115200, 8, 0, 0, timeout=1000, read_buf_len=4096)
 
 class Midline():
     """Class to hold the latest midline props."""
@@ -30,7 +28,7 @@ class Midline():
         """Update to the latest values."""
         self.l = l
         self.line_props = l.line()
-        self.theta = l.theta()
+        self.theta = convert_theta_val(l.theta())
         self.visible = True
         self.delta_theta = delta_theta
 
@@ -61,6 +59,7 @@ class Settings():
     """Class which holds global settings"""
 
     def __init__(self):
+        self.l_threshold = 180
         self.crossing_rois = [{"pos": "mid_bottom", "roi": (90, 120, 140, 120)},
                               {"pos": "left", "roi": (0, 40, 60, 160)},
                               {"pos": "mid_top", "roi": (90, 0, 140, 120)},
@@ -84,6 +83,10 @@ def initialize():
     sensor.set_hmirror(False)
     sensor.set_vflip(False)
     sensor.skip_frames(time=2000)
+    fm.register(board_info.PIN15, fm.fpioa.UART1_TX)
+    uart_A = UART(UART.UART1, 115200, 8, 0, 0, timeout=1000, read_buf_len=4096)
+    last_time = time()
+    return uart_A, last_time
 
 
 def take_snapshot():
@@ -92,6 +95,12 @@ def take_snapshot():
     # Use grayscale for line detection
     img = sensor.snapshot().to_grayscale()
     sensor.run(0)
+    return img
+
+
+def modify_img(img, settings):
+    """Process image"""
+    img.binary([(settings.l_threshold, 255)])
     return img
 
 
@@ -106,7 +115,7 @@ def convert_theta_val(theta):
 
 def get_delta_theta(midline, l):
     """Calculates delta theta."""
-    latest_theta = convert_theta_val(midline.theta)
+    latest_theta = midline.theta
     current_theta = convert_theta_val(l.theta())
     return (current_theta-latest_theta)
 
@@ -114,29 +123,14 @@ def get_delta_theta(midline, l):
 def get_midline(lines, midline):
     """Picks a midline from possible line candidates."""
     for l in lines:
-        if l.theta() < 50 or l.theta() > 130:
+        if l.theta() < 40 or l.theta() > 140:
             delta_theta = get_delta_theta(midline, l)
             midline.update_line(l, delta_theta)
             break
 
 
 def get_error(midline, cam_width, robot):
-    """Calculates error based on distance and angle from midline.""""""
-    if midline.theta < 90:
-        v = midline.theta
-    else:
-        v = 180-midline.theta
-    pi = math.pi
-    if v == 0.0:
-        Error = (180-midline.l.x1())*math.cos(v*(pi/180))*cam_width/320
-    elif 180-midline.l.x1() > 0:
-        Error = ((180-midline.l.x1()*math.cos(v*(pi/180)) -
-                  camera_dist*math.sin(v*(pi/180)))*cam_width/320)
-    else:
-        Error = ((180-midline.l.x1()*math.cos(v*(pi/180)) +
-                  camera_dist*math.sin(v*(pi/180)))*cam_width/320)
-    #print("Error = ", Error, " cm")
-    robot.update_err(Error, v)"""
+    """Calculates error based on distance from midline."""
     Error = (midline.l.x1()-160)*(cam_width/320)
     robot.update_err(Error)
 
@@ -149,9 +143,9 @@ def update_midline(img, settings, midline, robot):
     # Only do calculations if the midline is visible.
     if midline.visible:
         # Calculate error to regulate steering.
-        get_error(midline, settings.cam_width, settings.camera_dist, robot)
+        get_error(midline, settings.cam_width, robot)
         # Update roi
-        midline.roi = (midline.l.x1() - 20, 0, 40, 120)
+        midline.roi = (midline.l.x1() - 40, 0, 80, 240)
 
 
 def v_line(l):
@@ -263,7 +257,9 @@ def draw_onscreen(midline, img, settings, pos, robot):
                                                                          midline.l.x2())/2+robot.err*20), 120), color=(255, 0, 0), thickness=5)
     # Draw out used rois
     draw_roi(img, midline.roi)
-    img.draw_string(200, 100, pos, scale=2)
+    img.draw_string(100, 100, pos, scale=2)
+    img.draw_string(0, 120, "Fel: " + str(robot.err-1) +
+                    "vinkel: " + str(midline.theta), scale=2)
     # for crossing in settings.crossing_rois:
     # Fill if a crossing is found in the roi.
     # if crossing in crossings:
@@ -273,19 +269,21 @@ def draw_onscreen(midline, img, settings, pos, robot):
     lcd.display(img)
 
 
-initialize()
+def send_error(robot, midline):
+    uart_A.write(str(robot.err-1) + "," + str(midline.theta))
+
+
+uart_a, last_time = initialize()
 midline = Midline()  # (x1, x2, y1, y2)
 robot = Robot()
 settings = Settings()
 
 
 while(True):
-    print("Fel: " + str(robot.err))
-    uart_A.write("Fel: " + str(robot.err))
-    time.sleep(10)
     # Robot is blind while turning
     if not robot.turning:
         img = take_snapshot()
+        #img = modify_img(take_snapshot(), settings)
         # Get current position and midline
         if robot.update_midline:
             update_midline(img, settings, midline, robot)
@@ -293,6 +291,12 @@ while(True):
             pos = update_pos(settings, img, midline, robot)
         # Draw output to lcd
         draw_onscreen(midline, img, settings, pos, robot)
+        send_error(robot, midline)
+        delta_time = time() - last_time
+        if delta_time >= 0.1:
+            send_error(robot, midline)
+            print("Sending to arduino")
+            last_time = time()
     else:
         robot.update_midline = False
 print("finish")
