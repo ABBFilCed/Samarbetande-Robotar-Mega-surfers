@@ -18,7 +18,7 @@ int o = 0;
 float d = 0;
 float x = 0;
 float awmax = 180.0;
-float yg = 25.5;
+float yg = 0;
 float aw = 0;
 float av = 0;
 float y = 0;
@@ -95,19 +95,7 @@ int RC (int og){
   return og;
 }
 
-void setup() {
-  pinMode(DIRA, OUTPUT);
-  pinMode(PWMA, OUTPUT);
-  pinMode(HALL, INPUT);
-  myservo.attach(2);
-  Serial.begin(115200);
-  digitalWrite(DIRA, 1);
-  Serial.setTimeout(100);
-  attachInterrupt(digitalPinToInterrupt(HALL), Increase_pulses, FALLING);
-  last_millis = millis();
-}
-
-void loop() {
+int RegDist (float yg){
   Get_X(pulses, &prev_pulses, wheel_d, &y, &v, &prev_time);
   float delta_y = yg - y;
   if (abs(delta_y) >= 0.5 or v > 1){
@@ -133,6 +121,24 @@ void loop() {
     analogWrite(PWMA, 0);
     Serial.println("Done");
   }
+}
+
+int 
+
+void setup() {
+  pinMode(DIRA, OUTPUT);
+  pinMode(PWMA, OUTPUT);
+  pinMode(HALL, INPUT);
+  myservo.attach(2);
+  Serial.begin(115200);
+  digitalWrite(DIRA, 1);
+  Serial.setTimeout(100);
+  attachInterrupt(digitalPinToInterrupt(HALL), Increase_pulses, FALLING);
+  last_millis = millis();
+}
+
+void loop() {
+  RegDist(25.5);
   /*Serial.println(Serial.available());
   if ((millis() - last_millis) > 100 and Serial.available()){
       String mess = Serial.readString();
