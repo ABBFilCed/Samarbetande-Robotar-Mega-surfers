@@ -10,13 +10,12 @@ void loop(){
     delay(1);
     String err = Serial.readString();
     Serial.println(err);
-    /*
     char c = Serial.read();
     payload += c;
     if(payload.length() > 4){
       Serial.println(payload);
-      payload = "";*/
+      payload = "";
+    }
   }
 }
-
 
