@@ -72,9 +72,12 @@ class Settings():
         self.h_crossing_settings = 2, 1, 1000, 5, 5
         self.midline_settings = 2, 1, 1000, 25, 25
         self.h_line_settings = 10, 1, 800, 25, 25
+        self.uart_timeout = 50
+        self.sending_index = 0
+        self.sending_labels = ["edi", "ome"]
 
 
-def initialize():
+def initialize(uart_timeout):
     """Initialize the camera and lcd."""
     lcd.init(freq=15000000)
     sensor.reset(freq=20000000, set_regs=True, dual_buff=True)
@@ -84,7 +87,7 @@ def initialize():
     sensor.set_vflip(False)
     sensor.skip_frames(time=2000)
     fm.register(board_info.PIN15, fm.fpioa.UART1_TX)
-    uart_A = UART(UART.UART1, 115200, 8, 0, 0, timeout=1000, read_buf_len=4096)
+    uart_A = UART(UART.UART1, 115200, 8, 0, 0, timeout=uart_timeout, read_buf_len=4096)
     last_time = time()
     return uart_A, last_time
 
@@ -269,14 +272,23 @@ def draw_onscreen(midline, img, settings, pos, robot):
     lcd.display(img)
 
 
-def send_error(robot, midline):
-    uart_A.write(str(robot.err-1) + "," + str(midline.theta))
+def send_error(robot, midline, settings, uart_A):
+    index = settings.sending_index
+    label = settings.sending_labels[index]
+    if label == "edi":
+        uart_A.write(label + ":" + str(robot.err-1))
+    elif label == "ome":
+        uart_A.write(label + ":" + str(midline.theta))
+    index = 1 - index
+    settings.sending_index = index
+    last_time = time()
+    return last_time
 
 
-uart_a, last_time = initialize()
 midline = Midline()  # (x1, x2, y1, y2)
 robot = Robot()
 settings = Settings()
+uart_A, last_time = initialize(settings.uart_timeout)
 
 
 while(True):
@@ -291,12 +303,10 @@ while(True):
             pos = update_pos(settings, img, midline, robot)
         # Draw output to lcd
         draw_onscreen(midline, img, settings, pos, robot)
-        send_error(robot, midline)
         delta_time = time() - last_time
-        if delta_time >= 0.1:
-            send_error(robot, midline)
+        if delta_time >= 0.05:
+            last_time = send_error(robot, midline, settings, uart_A)
             print("Sending to arduino")
-            last_time = time()
     else:
         robot.update_midline = False
 print("finish")
