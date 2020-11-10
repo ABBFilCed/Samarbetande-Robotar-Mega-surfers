@@ -4,17 +4,53 @@ import json
 import pygame
 
 import search_algoritms
+from button import Button
 
 
-def update_map(matrix, nodes):
+def check_msgs(msgs, world_matrix, robot):
+    """Checks new messages."""
+    for msg in msgs:
+        # When robot is at a new position, delete the old position.
+        world_matrix[robot.pos[0]][robot.pos[1]] = world_matrix[robot.pos[0]
+                                                                ][robot.pos[1]][0] + world_matrix[robot.pos[0]][robot.pos[1]][1] + "0000"
+        # loaded message
+        e_msg = json.loads(msg)
+        print(e_msg)
+        robot.direction = e_msg[0]
+        if robot.direction == 0:
+            robot.pos = [robot.pos[0]+1, robot.pos[1]]
+        elif robot.direction == 1:
+            robot.pos = [robot.pos[0], robot.pos[1]-1]
+        elif robot.direction == 2:
+            robot.pos = [robot.pos[0]-1, robot.pos[1]]
+        elif robot.direction == 3:
+            robot.pos = [robot.pos[0], robot.pos[1]+1]
+        part = e_msg[1]
+        r = e_msg[0]-2+int(str(part)[0])
+        if r < 0:
+            r += 4
+        elif r > 3:
+            r -= 4
+        part = str(part)[0] + str(r) + "1000"
+        print(part)
+        world_matrix[robot.pos[0]][robot.pos[1]] = str(part)
+        print(world_matrix)
+        msgs.remove(msg)
+
+
+def update_map(matrix, nodes, msgs, robot):
     """Updates if any new unknown parts are found."""
+    check_msgs(msgs, matrix, robot)
+    nodes.update_nodes(matrix)
     for node in nodes.nodes_dict:
         for pos in nodes.nodes_dict[node]:
             pos = json.loads(pos[0])
             # Sets a reachable undiscovered part to a new value.
-            if matrix[pos[0]][pos[1]] == "100":
-                matrix[pos[0]][pos[1]] = "200"
+            if matrix[pos[0]][pos[1]][0] == "1":
+                matrix[pos[0]][pos[1]] = "200000"
     # Update nodes so the robot can navigate to unknown parts.
+    #print(matrix)
+    #print(robot.pos, "!!!")
     nodes.update_nodes(matrix)
 
 
@@ -35,17 +71,14 @@ def new_route(robot, nodes_dict, goal_pos):
 
 def check_for_goals(world_matrix, nodes_dict, robot):
     """Append routes for new goals."""
+    robot.goals = []
     for r in range(0, len(world_matrix)):
         for c in range(0, len(world_matrix[r])):
             # Creates a new task if a lego piece or road is found.
-            if int(world_matrix[r][c][2]) == 3 or int(world_matrix[r][c][0]) == 2:
+            if int(world_matrix[r][c][3]) == 1 or int(world_matrix[r][c][0]) == 2:
                 goal_pos = str([r, c])
-                goals = []
-                for goal in robot.goals:
-                    goals.append(goal['pos'])
                 # Only appends route for non-existing tasks.
-                if not goal_pos in goals:
-                    new_route(robot, nodes_dict, goal_pos)
+                new_route(robot, nodes_dict, goal_pos)
 
 
 def update_robot_route(world_matrix, nodes_dict, robot):
@@ -97,10 +130,12 @@ def get_placable_objects(settings, world_matrix, r, c):
         obj_file_path += 'lyftkran'
     elif int(world_matrix[r][c][2]) == 2:
         obj_file_path += 'dumper'
-    elif int(world_matrix[r][c][2]) == 3:
+    elif int(world_matrix[r][c][3]) == 1:
         obj_file_path += 'lego'
-    elif int(world_matrix[r][c][2]) == 4:
+    elif int(world_matrix[r][c][4]) == 1:
         obj_file_path += 'container'
+    elif int(world_matrix[r][c][5]) == 1:
+        obj_file_path += 'legogubbe'
     obj_file_path += '.bmp'
     return obj_file_path
 
@@ -114,7 +149,7 @@ def draw_part(settings, world_matrix, r, c, screen):
         world_matrix, screen, settings, rect, r, c)
     if part_file_path:
         place_img(part_file_path, screen, rect, rotations)
-    if int(world_matrix[r][c][2]) > 0:
+    if int(world_matrix[r][c][2]) > 0 or int(world_matrix[r][c][3]) == 1 or int(world_matrix[r][c][4]) == 1 or int(world_matrix[r][c][5]) == 1:
         obj_file_path = get_placable_objects(settings, world_matrix, r, c)
         place_img(obj_file_path, screen, rect)
 
@@ -168,6 +203,26 @@ def draw_route(route, screen, settings):
         pygame.draw.rect(screen, settings.route_color, rect)
 
 
+def get_buttons(robot, nodes, settings, screen):
+    pos = robot.pos
+    buttons = []
+    for node_pos in nodes[str(pos)]:
+        node_pos = json.loads(node_pos[0])
+        if node_pos[0] > pos[0]:
+            down_button = Button(settings, screen, "down", y_pos=150)
+            buttons.append(down_button)
+        if node_pos[0] < pos[0]:
+            up_button = Button(settings, screen, "up", y_pos=90)
+            buttons.append(up_button)
+        if node_pos[1] > pos[1]:
+            right_button = Button(settings, screen, "right", y_pos=210)
+            buttons.append(right_button)
+        if node_pos[1] < pos[1]:
+            left_button = Button(settings, screen, "left", y_pos=270)
+            buttons.append(left_button)
+    return buttons
+
+
 def update_screen(screen, settings, world_matrix, nodes, next_button, robot):
     """Update images on the screen and flip to the new screen"""
     # Redraw the screen during each pass through the loop.
@@ -177,11 +232,30 @@ def update_screen(screen, settings, world_matrix, nodes, next_button, robot):
     if robot.goals:
         draw_route(robot.goals[settings.view_route]['route'], screen, settings)
     next_button.draw_button()
-
+    buttons = get_buttons(robot, nodes.nodes_dict, settings, screen)
+    for button in buttons:
+        button.draw_button()
     pygame.display.flip()
+    return buttons
 
 
-def check_events(settings, robot):
+def check_buttons(buttons, next_button, mouse_x, mouse_y, robot, mqtt, settings):
+    for button in buttons:
+        if button.rect.collidepoint(mouse_x, mouse_y):
+            if button.msg == "down":
+                robot.direction = 0
+            elif button.msg == "up":
+                robot.direction = 2
+            elif button.msg == "left":
+                robot.direction = 1
+            elif button.msg == "right":
+                robot.direction = 3
+    else:
+        if next_button.rect.collidepoint(mouse_x, mouse_y):
+            mqtt.client.publish(settings.username + "/" + settings.robot_1_topic, str(robot.direction))
+
+
+def check_events(settings, robot, buttons, next_button, mqtt):
     """Respond to keypresses and mouse events."""
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -195,3 +269,6 @@ def check_events(settings, robot):
             elif event.key == pygame.K_LEFT:
                 if settings.view_route > 0:
                     settings.view_route -= 1
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            check_buttons(buttons, next_button, mouse_x, mouse_y, robot, mqtt, settings)

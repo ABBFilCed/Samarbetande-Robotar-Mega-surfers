@@ -5,6 +5,7 @@ class Robot():
         self.pos = [0, 0]
         self.direction = 0
         self.goals = []
+        self.short_term_goal = []
         self.current_route = []
 
     def update_pos(self, pos=False, direction=False):

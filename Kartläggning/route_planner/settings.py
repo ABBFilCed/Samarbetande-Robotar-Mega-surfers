@@ -1,3 +1,6 @@
+import random
+
+
 class Settings:
     """Class that holds all the settings."""
 
@@ -28,3 +31,14 @@ class Settings:
 
         # Decides which route to show.
         self.view_route = 0
+
+        # Mqtt settings
+        self.broker = "maqiatto.com"
+        self.username = "jesper.jansson@abbindustrigymnasium.se"
+        self.password = "1234"
+        self.topic = "map"
+        self.robot_1_topic = "robot1"
+
+    def get_client_id(self):
+        client_id = "backend" + str(random.randint(1111, 9999))
+        return client_id
