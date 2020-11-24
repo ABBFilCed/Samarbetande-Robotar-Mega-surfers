@@ -9,7 +9,9 @@
 
 Servo myservo;
 
-String payload, readString;
+String payload, incomingValue, readString;
+String part;
+String ediString, omeString, prtString; // labels
 int pulses = 0;
 float wheel_d = 3.6;
 int prev_time = 0;
@@ -76,8 +78,8 @@ auto GtG (float x, float y, float o, float awmax, float* av, float*aw){
 }
 
 int CC (float vg, float v, float* av){
-  e = vg - v;
-  kpv = 10.0;
+  float e = vg - v;
+  float kpv = 10.0;
   *av = kpv*e;
 }
 
@@ -109,13 +111,16 @@ void setup() {
   myservo.attach(2);
   Serial.begin(115200);
   digitalWrite(DIRA, 1);
-  Serial.setTimeout(100);
+  Serial.setTimeout(50);
   attachInterrupt(digitalPinToInterrupt(HALL), Increase_pulses, FALLING);
   last_millis = millis();
+  ediString = "edi";
+  omeString = "ome";
+  prtString = "prt";
 }
 
 void loop() {
-  Get_X(pulses, &prev_pulses, wheel_d, &y, &v, &prev_time);
+  //Get_X(pulses, &prev_pulses, wheel_d, &y, &v, &prev_time);
   CC(vg, v, &av);
   if (av > 0){
     dira = 0;
@@ -123,17 +128,37 @@ void loop() {
     dira = 1;
     av = -1*av;
   }
-  if (o > 5 or d > 0.5){
+  if (abs(o) > 5 or abs(d) > 0.5){
     FL(d, awmax, o, &av, &aw);
   }
   myservo.write(aw);
   //Serial.println(aw); 
   digitalWrite(DIRA, dira);
   analogWrite(PWMA, av+200.0);
-  }
+  
+  /*
   else{
     analogWrite(PWMA, 0);
     Serial.println("Done");
+  }*/
+  while(Serial.available()){
+    incomingValue = Serial.readString();
+    //Serial.println(incomingValue);
+    
+    if(ediString.compareTo(incomingValue.substring(0,3)) == 0){
+      d = incomingValue.substring(4).toFloat();
+      Serial.println(d);
+    }
+    
+    else if(omeString.compareTo(incomingValue.substring(0,3)) == 0){
+      o = incomingValue.substring(4).toFloat();
+      Serial.println(o);
+    }
+
+    else if(prtString.compareTo(incomingValue.substring(0,3)) == 0){
+      part = incomingValue.substring(4);
+      Serial.println(part);
+    }
   }
   /*Serial.println(Serial.available());
   if ((millis() - last_millis) > 100 and Serial.available()){
