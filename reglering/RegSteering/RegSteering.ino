@@ -108,7 +108,7 @@ void setup() {
   pinMode(DIRA, OUTPUT);
   pinMode(PWMA, OUTPUT);
   pinMode(HALL, INPUT);
-  myservo.attach(2);
+  myservo.attach(14);
   Serial.begin(115200);
   digitalWrite(DIRA, 1);
   Serial.setTimeout(50);
@@ -120,8 +120,8 @@ void setup() {
 }
 
 void loop() {
-  //Get_X(pulses, &prev_pulses, wheel_d, &y, &v, &prev_time);
-  CC(vg, v, &av);
+  Get_X(pulses, &prev_pulses, wheel_d, &y, &v, &prev_time);
+  //CC(vg, v, &av);
   if (av > 0){
     dira = 0;
   } else {
@@ -129,10 +129,10 @@ void loop() {
     av = -1*av;
   }
   if (abs(o) > 5 or abs(d) > 0.5){
-    FL(d, awmax, o, &av, &aw);
+    //FL(d, awmax, o, &av, &aw);
   }
   myservo.write(aw);
-  //Serial.println(aw); 
+  Serial.println(aw); 
   digitalWrite(DIRA, dira);
   analogWrite(PWMA, av+200.0);
   
