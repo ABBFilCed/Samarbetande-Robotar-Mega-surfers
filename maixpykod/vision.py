@@ -10,7 +10,7 @@ from machine import UART
 
 
 class Midline():
-    """Class to hold the latest midline props."""
+    """Class that holds the latest midline props."""
 
     def __init__(self):
         self.l = ()
@@ -38,7 +38,7 @@ class Midline():
 
     def reset_roi(self):
         """Reset midline, e.g. after turning"""
-        self.roi = (120, 0, 80, 240)
+        self.roi = (120, 120, 80, 120)
 
 
 class Robot():
@@ -59,18 +59,17 @@ class Settings():
     """Class which holds global settings"""
 
     def __init__(self):
-        self.l_threshold = 180
+        # Different rois for crossings
         self.crossing_rois = [{"pos": "mid_bottom", "roi": (90, 120, 140, 120)},
                               {"pos": "left", "roi": (0, 40, 60, 160)},
                               {"pos": "mid_top", "roi": (90, 0, 140, 120)},
                               {"pos": "right", "roi": (250, 40, 70, 160)},
                               ]
-        self.camera_dist = 10
-        self.cam_width = 16
+        self.cam_width = 16  # Width of camera in cm
         # x-stride, y-stride, threshold, theta_margin, rho_margin
         self.v_crossing_settings = 2, 1, 1000, 10, 10
         self.h_crossing_settings = 2, 1, 1000, 5, 5
-        self.midline_settings = 2, 1, 1000, 25, 25
+        self.midline_settings = 5, 300, 400, 25, 25
         self.h_line_settings = 10, 1, 800, 25, 25
         self.uart_timeout = 50
         self.sending_index = 0
@@ -87,7 +86,8 @@ def initialize(uart_timeout):
     sensor.set_vflip(False)
     sensor.skip_frames(time=2000)
     fm.register(board_info.PIN15, fm.fpioa.UART1_TX)
-    uart_A = UART(UART.UART1, 115200, 8, 0, 0, timeout=uart_timeout, read_buf_len=4096)
+    uart_A = UART(UART.UART1, 115200, 8, 0, 0,
+                  timeout=uart_timeout, read_buf_len=4096)
     last_time = time()
     return uart_A, last_time
 
@@ -101,14 +101,8 @@ def take_snapshot():
     return img
 
 
-def modify_img(img, settings):
-    """Process image"""
-    img.binary([(settings.l_threshold, 255)])
-    return img
-
-
 def convert_theta_val(theta):
-    """Converts theta value to 90 <-- --> -90"""
+    """Converts theta value to 90 > theta > -90"""
     if theta < 90:
         converted_theta = theta
     else:
@@ -126,7 +120,8 @@ def get_delta_theta(midline, l):
 def get_midline(lines, midline):
     """Picks a midline from possible line candidates."""
     for l in lines:
-        if l.theta() < 40 or l.theta() > 140:
+        if l.theta() < 20 or l.theta() > 160:
+            #img.draw_line(l.line(), color=(255, 0, 0))
             delta_theta = get_delta_theta(midline, l)
             midline.update_line(l, delta_theta)
             break
@@ -148,7 +143,13 @@ def update_midline(img, settings, midline, robot):
         # Calculate error to regulate steering.
         get_error(midline, settings.cam_width, robot)
         # Update roi
-        midline.roi = (midline.l.x1() - 40, 0, 80, 240)
+        #print("x1: " + str(midline.l.x1()))
+        #print("x2: " + str(midline.l.x2()))
+        #print("diff: " + str(midline.l.x2() - midline.l.x1()))
+        if midline.l.x1() < midline.l.x2():
+            midline.roi = (midline.l.x1() - 30, 0, midline.l.x2() - midline.l.x1() + 60, 240)
+        else:
+            midline.roi = (midline.l.x2() - 30, 0, midline.l.x1() - midline.l.x2() + 60, 240)
 
 
 def v_line(l):
@@ -304,6 +305,8 @@ while(True):
         # Draw output to lcd
         draw_onscreen(midline, img, settings, pos, robot)
         delta_time = time() - last_time
+        draw_roi(img, midline.roi)
+        lcd.display(img)
         if delta_time >= 0.05:
             last_time = send_error(robot, midline, settings, uart_A)
             print("Sending to arduino")

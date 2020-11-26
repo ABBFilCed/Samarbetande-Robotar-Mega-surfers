@@ -15,7 +15,7 @@ void loop(){
   while(Serial.available()){
     delay(0.05);
     incomingValue = Serial.readString();
-    Serial.println(incomingValue);
+    //Serial.println(incomingValue);
     
     if(ediString.compareTo(incomingValue.substring(0,3)) == 0){
       d = incomingValue.substring(4).toFloat();
