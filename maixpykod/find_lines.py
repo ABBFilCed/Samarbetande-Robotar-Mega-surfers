@@ -7,7 +7,7 @@ sensor.set_pixformat(sensor.RGB565)
 sensor.set_framesize(sensor.QVGA)
 sensor.set_hmirror(0)
 sensor.run(1)
-sensor.skip_frames(time = 2000)
+sensor.skip_frames(time = 2000)i
 
 def get_vertical_lines(lines):
     vertical_lines = 0
