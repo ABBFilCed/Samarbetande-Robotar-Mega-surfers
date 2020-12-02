@@ -79,7 +79,7 @@ auto GtG (float x, float y, float o, float awmax, float* av, float*aw){
 
 int CC (float vg, float v, float* av){
   float e = vg - v;
-  float kpv = 10.0;
+  float kpv = 100.0;
   *av = kpv*e;
 }
 
@@ -131,10 +131,10 @@ void loop() {
   if (abs(o) > 5 or abs(d) > 0.5){
     //FL(d, awmax, o, &av, &aw);
   }
-  myservo.write(aw);
+  myservo.write(90);
   Serial.println(aw); 
   digitalWrite(DIRA, dira);
-  analogWrite(PWMA, av+200.0);
+  analogWrite(PWMA, 500);
   
   /*
   else{
