@@ -318,9 +318,9 @@ while(True):
             tmp=img.draw_rectangle(b[0:4])
             tmp=img.draw_cross(b[5], b[6])
             c=img.get_pixel(b[5], b[6])
-            print("green=true")
+            print("green=true sending value to esp8266")
             uart_A.write("green=true")
-            time.sleep(1)
+            time.sleep(0.1)
 
     # Robot is blind while turning
     if not robot.turning:

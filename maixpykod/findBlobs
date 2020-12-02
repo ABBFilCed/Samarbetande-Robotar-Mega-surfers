@@ -23,12 +23,12 @@ while True:
     yellowBlobs = img.find_blobs([yellow_threshold], area_threshold = 200)
 
     # statements to find different blobs
-    if darkBlueBlobs:
-        for b in darkBlueBlobs:
-            tmp=img.draw_rectangle(b[0:4])
-            tmp=img.draw_cross(b[5], b[6])
-            c=img.get_pixel(b[5], b[6])
-            print("darkBlue blob found")
+    #if darkBlueBlobs:
+        #for b in darkBlueBlobs:
+            #tmp=img.draw_rectangle(b[0:4])
+            #tmp=img.draw_cross(b[5], b[6])
+            #c=img.get_pixel(b[5], b[6])
+            #print("darkBlue blob found")
 
     if greenBlobs:
         for b in greenBlobs:
@@ -37,18 +37,18 @@ while True:
             c=img.get_pixel(b[5], b[6])
             print("Green blob found")
 
-    if redBlobs:
-        for b in redBlobs:
-            tmp=img.draw_rectangle(b[0:4])
-            tmp=img.draw_cross(b[5], b[6])
-            c=img.get_pixel(b[5], b[6])
-            print("Red blob found")
+    #if redBlobs:
+        #for b in redBlobs:
+            #tmp=img.draw_rectangle(b[0:4])
+            #tmp=img.draw_cross(b[5], b[6])
+            #c=img.get_pixel(b[5], b[6])
+            #print("Red blob found")
 
-    if yellowBlobs:
-        for b in yellowBlobs:
-            tmp=img.draw_rectangle(b[0:4])
-            tmp=img.draw_cross(b[5], b[6])
-            c=img.get_pixel(b[5], b[6])
-            print("Yellow blob found")
+    #if yellowBlobs:
+        #for b in yellowBlobs:
+            #tmp=img.draw_rectangle(b[0:4])
+            #tmp=img.draw_cross(b[5], b[6])
+            #c=img.get_pixel(b[5], b[6])
+            #print("Yellow blob found")
 
     lcd.display(img)
