@@ -277,7 +277,8 @@ def send_error(robot, midline, settings, uart_A):
     index = settings.sending_index
     label = settings.sending_labels[index]
     if label == "edi":
-        uart_A.write(label + ":" + str(robot.err))
+        uart_A.write(label + ":" + str(robot.err-1.75))
+        print(str(robot.err-1.75))
     elif label == "ome":
         uart_A.write(label + ":" + str(midline.theta))
     index = 1 - index
@@ -306,9 +307,8 @@ while(True):
         draw_onscreen(midline, img, settings, pos, robot)
         delta_time = time() - last_time
         draw_roi(img, midline.roi)
-        if delta_time >= 0.05:
-            last_time = send_error(robot, midline, settings, uart_A)
-            print("Sending to arduino")
+        last_time = send_error(robot, midline, settings, uart_A)
+        #print("Sending to arduino")
     else:
         robot.update_midline = False
 print("finish")

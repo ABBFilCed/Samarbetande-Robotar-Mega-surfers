@@ -135,6 +135,7 @@ void setup() {
   Serial.setTimeout(100);
   attachInterrupt(digitalPinToInterrupt(HALL), Increase_pulses, FALLING);
   last_millis = millis();
+  delay(5000);
 }
 
 void loop() {

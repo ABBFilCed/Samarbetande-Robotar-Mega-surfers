@@ -1,5 +1,19 @@
 #include <Wire.h>
 #include <Servo.h>
+#include "EspMQTTClient.h"
+
+EspMQTTClient client(
+ "ABB_Indgym_Guest",           // Wifi ssid
+  "Welcome2abb",           // Wifi password
+  "maqiatto.com",  // MQTT broker ip
+  1883,             // MQTT broker port
+  "jesper.jansson@abbindustrigymnasium.se",            // MQTT username
+  "1234",       // MQTT password
+  "jesper",          // Client name
+  onConnectionEstablished, // Connection established callback
+  true,             // Enable web updater
+  true              // Enable debug messages
+);
 
 #define DIRA 0 //Motor direction
 #define PWMA 5 //Motor pwm
@@ -16,13 +30,13 @@ int pulses = 0;
 float wheel_d = 3.6;
 int prev_time = 0;
 int prev_pulses = 0;
-int o = 0;
+float o = 0;
 float d = 0;
 float x = 0;
 float awmax = 180.0;
-float yg = 25.5;
+float yg = 51;
 float aw = 0;
-float av = 0;
+float av = 90;
 float y = 0;
 float v = 0;
 float vg = 5.0;
@@ -30,6 +44,28 @@ float i = 0;
 int dira = 0;
 int last_millis;
 int c_num;
+
+void onRecieve(){
+  r_direction = payload.toInt();
+  Serial.write(1);
+  wait_msg = true;
+  message = "[" + String(r_direction) + ", " + part + "]";
+  client.publish("jesper.jansson@abbindustrigymnasium.se/map", message);
+}
+
+auto sendPwm(av, aw){
+  message = "[" + String(av) + ", " + String(aw) + "]";
+  client.publish("jesper.jansson@abbindustrigymnasium.se/pwm", message);
+}
+
+void onConnectionEstablished()
+{
+  client.subscribe("jesper.jansson@abbindustrigymnasium.se/robot1", [] (const String &payload)
+  {
+    onRecieve();
+  });
+}
+
 
 void Increase_pulses(){
   if (dira) {
@@ -48,7 +84,7 @@ auto Get_X (int pulses, int* prev_pulses, float wheel_d, float* y, float* v, int
   int varv_diff = (pulses - *prev_pulses); //Pulses sice last calculation 
   float rpm = (float(varv_diff)/float(time_diff))*60000/96; // pulse per millisecond multiplied with milliseconds per minute and 1:48 gear ratio
   *v = (rpm/60)*(3.14*wheel_d);
-  *y = (float(pulses)/160)*(3.14*wheel_d);
+  *y = (float(pulses)/140)*(3.14*wheel_d);
   *prev_pulses = pulses; 
   *prev_time = current_time;
   //*o += aw*time_diff
@@ -60,8 +96,8 @@ auto GtG (float x, float y, float o, float awmax, float* av, float*aw){
   if (not x == 0) {
      int og = tan(y/x)*360/(2*3.14);
   }
-  float kpv = 10;
-  float kiv = 0.005;
+  float kpv = 6;
+  float kiv = 0.0005;
   float kpw = 1;
   float vg = sqrt(sq(x)+sq(y));
   if (y < 0){
@@ -70,7 +106,7 @@ auto GtG (float x, float y, float o, float awmax, float* av, float*aw){
   i = i + vg;
   *av = (kpv*vg) + (kiv*i);
   int wg = (og-o);  
-  *aw = kpw*wg;
+  *aw = kpw*wg + 90;
   if ((*aw) > awmax){
     *av = 0;
     *aw = awmax;
@@ -84,12 +120,16 @@ int CC (float vg, float v, float* av){
 }
 
 int FL (float d, float awmax, float o, float* av, float* aw){
-  float kpw = 1;
-  float og = 10.0*d;
+  float kpw = 10;
+  float og = -30.0*d;
   float delta_o = og-o;
   *aw = kpw*(delta_o) + 90.0;
   if (*aw > awmax){
     *aw = awmax;
+    *av = 0;
+  }
+  else if (*aw < 0){
+    *aw = 0;
     *av = 0;
   }
 }
@@ -117,31 +157,51 @@ void setup() {
   ediString = "edi";
   omeString = "ome";
   prtString = "prt";
+  myservo.write(90);
+  delay(5000);
+  client.publish("jesper.jansson@abbindustrigymnasium.se/pwm", "Robot connected!");
 }
 
 void loop() {
+  client.loop();
   Get_X(pulses, &prev_pulses, wheel_d, &y, &v, &prev_time);
-  //CC(vg, v, &av);
-  if (av > 0){
-    dira = 0;
-  } else {
-    dira = 1;
-    av = -1*av;
+  float delta_y = yg - y;
+  if (abs(delta_y) >= 0.5 or v > 1){
+    GtG(x, delta_y, o, awmax, &av, &aw);
+    aw = 90;
+    //Serial.println(delta_y);
+    //Serial.println(delta_y);
+    FL(d, awmax, o, &av, &aw);
+    if (av > 0){
+      dira = 0;
+    } else {
+      dira = 1;
+      av = -1*av;
+    }
+    /*if (o > 5 or d > 0.5){
+      FL(d, awmax, o, &av, &aw);
+    }
+    myservo.write(aw);*/
+    Serial.println(aw); 
+    digitalWrite(DIRA, dira);
+    analogWrite(PWMA, av+200.0);
+    myservo.write(aw);
+    sendPwm(av, aw);
   }
-  if (abs(o) > 5 or abs(d) > 0.5){
-    //FL(d, awmax, o, &av, &aw);
+  else{
+    analogWrite(PWMA, 0);
+    Serial.println("Done");
+    myservo.write(90);
+    client.publish("jesper.jansson@abbindustrigymnasium.se/pwm", "Done");
   }
-  myservo.write(90);
-  Serial.println(aw); 
-  digitalWrite(DIRA, dira);
-  analogWrite(PWMA, 500);
+
   
   /*
   else{
     analogWrite(PWMA, 0);
     Serial.println("Done");
   }*/
-  while(Serial.available()){
+  if(Serial.available()){
     incomingValue = Serial.readString();
     //Serial.println(incomingValue);
     
