@@ -9,6 +9,10 @@ from time import time
 from machine import UART
 
 
+# color threshold green
+green_threshold = (0,   80,  -70,   -10,   -0,   30)
+
+
 class Midline():
     """Class that holds the latest midline props."""
 
@@ -97,6 +101,9 @@ def take_snapshot():
     sensor.run(1)
     # Use grayscale for line detection
     img = sensor.snapshot().to_grayscale()
+    #hist = img.get_histogram()
+    #percent = hist.get_percentile()
+    # print(str(percent.value))
     sensor.run(0)
     return img
 
@@ -147,9 +154,11 @@ def update_midline(img, settings, midline, robot):
         #print("x2: " + str(midline.l.x2()))
         #print("diff: " + str(midline.l.x2() - midline.l.x1()))
         if midline.l.x1() < midline.l.x2():
-            midline.roi = (midline.l.x1() - 30, 0, midline.l.x2() - midline.l.x1() + 60, 240)
+            midline.roi = (midline.l.x1() - 40, 0,
+                           midline.l.x2() - midline.l.x1() + 80, 240)
         else:
-            midline.roi = (midline.l.x2() - 30, 0, midline.l.x1() - midline.l.x2() + 60, 240)
+            midline.roi = (midline.l.x2() - 40, 0,
+                           midline.l.x1() - midline.l.x2() + 80, 240)
 
 
 def v_line(l):
@@ -277,8 +286,8 @@ def send_error(robot, midline, settings, uart_A):
     index = settings.sending_index
     label = settings.sending_labels[index]
     if label == "edi":
-        uart_A.write(label + ":" + str(robot.err-1.75))
-        print(str(robot.err-1.75))
+        uart_A.write(label + ":" + str(robot.err-1.6))
+        print(str(robot.err-1.6))
     elif label == "ome":
         uart_A.write(label + ":" + str(midline.theta))
     index = 1 - index
@@ -297,14 +306,26 @@ while(True):
     # Robot is blind while turning
     if not robot.turning:
         img = take_snapshot()
+        greenBlobs = img.find_blobs([green_threshold], area_threshold=200)
+
+        # statement to find green blobs
+        if greenBlobs:
+            for b in greenBlobs:
+                tmp = img.draw_rectangle(b[0:4])
+                tmp = img.draw_cross(b[5], b[6])
+                c = img.get_pixel(b[5], b[6])
+                #print("green=true sending value to esp8266")
+                #uart_A.write("leg:" + "1")
+                # time.sleep(0.1)
+                break
         #img = modify_img(take_snapshot(), settings)
         # Get current position and midline
         if robot.update_midline:
             update_midline(img, settings, midline, robot)
-        if robot.new_part:
-            pos = update_pos(settings, img, midline, robot)
+        """if robot.new_part:
+            pos = update_pos(settings, img, midline, robot)"""
         # Draw output to lcd
-        draw_onscreen(midline, img, settings, pos, robot)
+        #draw_onscreen(midline, img, settings, pos, robot)
         delta_time = time() - last_time
         draw_roi(img, midline.roi)
         last_time = send_error(robot, midline, settings, uart_A)

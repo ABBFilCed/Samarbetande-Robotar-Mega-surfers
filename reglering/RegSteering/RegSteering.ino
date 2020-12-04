@@ -2,6 +2,8 @@
 #include <Servo.h>
 #include "EspMQTTClient.h"
 
+void onConnectionEstablished();
+
 EspMQTTClient client(
  "ABB_Indgym_Guest",           // Wifi ssid
   "Welcome2abb",           // Wifi password
@@ -34,7 +36,7 @@ float o = 0;
 float d = 0;
 float x = 0;
 float awmax = 180.0;
-float yg = 51;
+float yg = 25.5;
 float aw = 0;
 float av = 90;
 float y = 0;
@@ -44,17 +46,14 @@ float i = 0;
 int dira = 0;
 int last_millis;
 int c_num;
+int n_r = 0;
 
 void onRecieve(){
-  r_direction = payload.toInt();
-  Serial.write(1);
-  wait_msg = true;
-  message = "[" + String(r_direction) + ", " + part + "]";
-  client.publish("jesper.jansson@abbindustrigymnasium.se/map", message);
+  Serial.println("Message recieved");
 }
 
-auto sendPwm(av, aw){
-  message = "[" + String(av) + ", " + String(aw) + "]";
+auto sendPwm(float* av, float* aw){
+  String message = "{" + "String(*av) + ", " + String(*aw) + "}";
   client.publish("jesper.jansson@abbindustrigymnasium.se/pwm", message);
 }
 
@@ -96,8 +95,8 @@ auto GtG (float x, float y, float o, float awmax, float* av, float*aw){
   if (not x == 0) {
      int og = tan(y/x)*360/(2*3.14);
   }
-  float kpv = 6;
-  float kiv = 0.0005;
+  float kpv = 5;
+  float kiv = 0.03;
   float kpw = 1;
   float vg = sqrt(sq(x)+sq(y));
   if (y < 0){
@@ -105,6 +104,9 @@ auto GtG (float x, float y, float o, float awmax, float* av, float*aw){
   }
   i = i + vg;
   *av = (kpv*vg) + (kiv*i);
+  if (*av > 1023){
+    *av = 1023;
+  }
   int wg = (og-o);  
   *aw = kpw*wg + 90;
   if ((*aw) > awmax){
@@ -120,8 +122,8 @@ int CC (float vg, float v, float* av){
 }
 
 int FL (float d, float awmax, float o, float* av, float* aw){
-  float kpw = 10;
-  float og = -30.0*d;
+  float kpw = 1;
+  float og = -20.0*d;
   float delta_o = og-o;
   *aw = kpw*(delta_o) + 90.0;
   if (*aw > awmax){
@@ -158,68 +160,122 @@ void setup() {
   omeString = "ome";
   prtString = "prt";
   myservo.write(90);
-  delay(5000);
+  delay(10000);
   client.publish("jesper.jansson@abbindustrigymnasium.se/pwm", "Robot connected!");
 }
 
 void loop() {
-  client.loop();
-  Get_X(pulses, &prev_pulses, wheel_d, &y, &v, &prev_time);
-  float delta_y = yg - y;
-  if (abs(delta_y) >= 0.5 or v > 1){
-    GtG(x, delta_y, o, awmax, &av, &aw);
-    aw = 90;
-    //Serial.println(delta_y);
-    //Serial.println(delta_y);
-    FL(d, awmax, o, &av, &aw);
-    if (av > 0){
-      dira = 0;
-    } else {
-      dira = 1;
-      av = -1*av;
+    client.loop();
+    float delta_y = yg - y;
+    if(Serial.available()){
+      incomingValue = Serial.readString();
+      //Serial.println(incomingValue);
+      
+      if(ediString.compareTo(incomingValue.substring(0,3)) == 0){
+        d = incomingValue.substring(4).toFloat();
+        Serial.println(d);
+      }
+      
+      else if(omeString.compareTo(incomingValue.substring(0,3)) == 0){
+        o = incomingValue.substring(4).toFloat();
+        Serial.println(o);
+      }
+  
+      else if(prtString.compareTo(incomingValue.substring(0,3)) == 0){
+        part = incomingValue.substring(4);
+        Serial.println(part);
+      }
     }
-    /*if (o > 5 or d > 0.5){
-      FL(d, awmax, o, &av, &aw);
+    while (abs(o) > 5) {
+          FL(d, awmax, o, &av, &aw);
+          myservo.write(aw);
+          analogWrite(PWMA, 0);
+          if(Serial.available()){
+            incomingValue = Serial.readString();
+            //Serial.println(incomingValue);
+            
+            if(ediString.compareTo(incomingValue.substring(0,3)) == 0){
+              d = incomingValue.substring(4).toFloat();
+              Serial.println(d);
+            }
+            
+            else if(omeString.compareTo(incomingValue.substring(0,3)) == 0){
+              o = incomingValue.substring(4).toFloat();
+              Serial.println(o);
+            }
+        
+            else if(prtString.compareTo(incomingValue.substring(0,3)) == 0){
+              part = incomingValue.substring(4);
+              Serial.println(part);
+            }
+          }
     }
-    myservo.write(aw);*/
-    Serial.println(aw); 
-    digitalWrite(DIRA, dira);
-    analogWrite(PWMA, av+200.0);
-    myservo.write(aw);
-    sendPwm(av, aw);
-  }
-  else{
-    analogWrite(PWMA, 0);
-    Serial.println("Done");
-    myservo.write(90);
-    client.publish("jesper.jansson@abbindustrigymnasium.se/pwm", "Done");
-  }
-
+    while (n_r < 3) {
+      if (abs(delta_y) >= 0.5){
+        Get_X(pulses, &prev_pulses, wheel_d, &y, &v, &prev_time);
+        GtG(x, delta_y, o, awmax, &av, &aw);
+        aw = 90;
+        //Serial.println(delta_y);
+        //Serial.println(delta_y);
+        if (av > 0){
+          dira = 0;
+        } else {
+          dira = 1;
+          av = -1*av;
+        }
+        /*if (o > 5 or d > 0.5){
+          FL(d, awmax, o, &av, &aw);
+        }
+        myservo.write(aw);*/
+        Serial.println(aw); 
+        digitalWrite(DIRA, dira);
+        analogWrite(PWMA, av+200.0);
+        myservo.write(aw);
+        sendPwm(&av, &aw);
+      }
+      else{
+        analogWrite(PWMA, 0);
+        Serial.println("Done");
+        myservo.write(90);
+        client.publish("jesper.jansson@abbindustrigymnasium.se/pwm", "Done");
+        delay(2000);
+        while (o > 5) {
+          FL(d, awmax, o, &av, &aw);
+          myservo.write(aw);
+          analogWrite(PWMA, 0);
+          if(Serial.available()){
+            incomingValue = Serial.readString();
+            //Serial.println(incomingValue);
+            
+            if(ediString.compareTo(incomingValue.substring(0,3)) == 0){
+              d = incomingValue.substring(4).toFloat();
+              Serial.println(d);
+            }
+            
+            else if(omeString.compareTo(incomingValue.substring(0,3)) == 0){
+              o = incomingValue.substring(4).toFloat();
+              Serial.println(o);
+            }
+        
+            else if(prtString.compareTo(incomingValue.substring(0,3)) == 0){
+              part = incomingValue.substring(4);
+              Serial.println(part);
+            }
+          }
+        }
+        float i = 0;
+        int pulses = 0;
+        n_r += 1;
+      }
+    }
+ 
   
   /*
   else{
     analogWrite(PWMA, 0);
     Serial.println("Done");
   }*/
-  if(Serial.available()){
-    incomingValue = Serial.readString();
-    //Serial.println(incomingValue);
-    
-    if(ediString.compareTo(incomingValue.substring(0,3)) == 0){
-      d = incomingValue.substring(4).toFloat();
-      Serial.println(d);
-    }
-    
-    else if(omeString.compareTo(incomingValue.substring(0,3)) == 0){
-      o = incomingValue.substring(4).toFloat();
-      Serial.println(o);
-    }
-
-    else if(prtString.compareTo(incomingValue.substring(0,3)) == 0){
-      part = incomingValue.substring(4);
-      Serial.println(part);
-    }
-  }
+ 
   /*Serial.println(Serial.available());
   if ((millis() - last_millis) > 100 and Serial.available()){
       String mess = Serial.readString();
@@ -236,5 +292,6 @@ void loop() {
       Serial.println(d, o);
       last_millis = millis();
     }*/
- }
+}
+
 
