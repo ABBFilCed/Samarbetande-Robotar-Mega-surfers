@@ -232,8 +232,8 @@ def check_for_curve(midline):
     elif midline.delta_theta < -10:
         crv = "Curve <--"""
     crv = False
-    l_blobs = img.find_blobs([(200, 255)], roi = (0, 0, 160, 240), area_threshold = 200)
-    r_blobs = img.find_blobs([(200, 255)], roi = (160, 0, 160, 240), area_threshold = 200)
+    l_blobs = img.find_blobs([(200, 255)], roi = (0, 0, 120, 240), area_threshold = 200)
+    r_blobs = img.find_blobs([(200, 255)], roi = (200, 0, 120, 240), area_threshold = 200)
     for l in l_blobs:
         tmp=img.draw_rectangle(l[0:4], color=(255,0,0), thickness=3)
     if len(r_blobs) > len(l_blobs):
@@ -329,11 +329,12 @@ while(True):
                 break
         #img = modify_img(take_snapshot(), settings)
         # Get current position and midline
-        if robot.update_midline:
-            update_midline(img, settings, midline, robot)
+        """if robot.update_midline:
+            update_midline(img, settings, midline, robot)"""
         if robot.new_part:
-            #pos = update_pos(settings, img, midline, robot, pos)
-            #print(pos)
+            pos = update_pos(settings, img, midline, robot, pos)
+            if pos != "Straight":
+                print(pos)
         # Draw output to lcd
         #draw_onscreen(midline, img, settings, pos, robot)
         delta_time = time() - last_time
