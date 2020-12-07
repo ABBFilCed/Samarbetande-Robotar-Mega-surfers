@@ -1,16 +1,13 @@
 import sensor
 import image
 import lcd
-import time
 import math
-from fpioa_manager import fm
-from board import board_info
+
 from time import time
 from machine import UART
 
-
-# color threshold green
-green_threshold = (0,   80,  -70,   -10,   -0,   30)
+from fpioa_manager import fm
+from board import board_info
 
 
 class Midline():
@@ -41,7 +38,7 @@ class Midline():
         img.draw_line(self.l.line(), color=(255, 0, 0))
 
     def reset_roi(self):
-        """Reset midline, e.g. after turning"""
+        """Reset roi, e.g. after turning or when no line is found."""
         self.roi = (120, 120, 80, 120)
 
 
@@ -75,7 +72,11 @@ class Settings():
         self.h_crossing_settings = 2, 1, 1000, 5, 5
         self.midline_settings = 5, 300, 400, 25, 25
         self.h_line_settings = 10, 1, 800, 25, 25
+
+        # Set how often to transmit data
         self.uart_timeout = 50
+
+        # Labels and index for the values to send with UART. Se usage in the send_error() function
         self.sending_index = 0
         self.sending_labels = ["edi", "ome"]
 
@@ -92,18 +93,17 @@ def initialize(uart_timeout):
     fm.register(board_info.PIN15, fm.fpioa.UART1_TX)
     uart_A = UART(UART.UART1, 115200, 8, 0, 0,
                   timeout=uart_timeout, read_buf_len=4096)
+    # color threshold green
+    green_threshold = (0,   80,  -70,   -10,   -0,   30)
     last_time = time()
-    return uart_A, last_time
+    return uart_A, last_time, green_threshold
 
 
 def take_snapshot():
     """Turn on, take an image and then shut down the camera"""
     sensor.run(1)
-    # Use grayscale for line detection
+    # Uses grayscale
     img = sensor.snapshot().to_grayscale()
-    #hist = img.get_histogram()
-    #percent = hist.get_percentile()
-    # print(str(percent.value))
     sensor.run(0)
     return img
 
@@ -150,9 +150,6 @@ def update_midline(img, settings, midline, robot):
         # Calculate error to regulate steering.
         get_error(midline, settings.cam_width, robot)
         # Update roi
-        #print("x1: " + str(midline.l.x1()))
-        #print("x2: " + str(midline.l.x2()))
-        #print("diff: " + str(midline.l.x2() - midline.l.x1()))
         if midline.l.x1() < midline.l.x2():
             midline.roi = (midline.l.x1() - 40, 0,
                            midline.l.x2() - midline.l.x1() + 80, 240)
@@ -204,14 +201,12 @@ def detect_junctions(crossings, img, h_line_settings):
     # 4 way-junctions have 4 crossings.
     junct = False
     if len(crossings) == 4:
-        #print("4-way crossing ahead!")
         junct = "4_W"
     elif len(crossings) == 1:
         # A t-junction with <-- and --> has a crossing and a horizontal midline.
         if crossings[0]['pos'] == "mid_bottom":
             for l in img.find_lines((0, 0, 320, 120), *h_line_settings):
                 if h_line(l):
-                    #print("T-junction ahead!")
                     img.draw_line(l.line(), color=(255, 0, 0), thickness=3)
                     junct = "T_LR"
         elif crossings[0]['pos'] == "left":
@@ -299,7 +294,7 @@ def send_error(robot, midline, settings, uart_A):
 midline = Midline()  # (x1, x2, y1, y2)
 robot = Robot()
 settings = Settings()
-uart_A, last_time = initialize(settings.uart_timeout)
+uart_A, last_time, green_threshold = initialize(settings.uart_timeout)
 
 
 while(True):
@@ -329,7 +324,6 @@ while(True):
         delta_time = time() - last_time
         draw_roi(img, midline.roi)
         last_time = send_error(robot, midline, settings, uart_A)
-        #print("Sending to arduino")
     else:
         robot.update_midline = False
 print("finish")
