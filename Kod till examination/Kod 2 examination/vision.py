@@ -333,8 +333,7 @@ while(True):
             update_midline(img, settings, midline, robot)"""
         if robot.new_part:
             pos = update_pos(settings, img, midline, robot, pos)
-            if pos != "Straight":
-                print(pos)
+            print(pos)
         # Draw output to lcd
         #draw_onscreen(midline, img, settings, pos, robot)
         delta_time = time() - last_time
